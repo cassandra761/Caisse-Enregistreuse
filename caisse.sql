@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS vente (
     id_user CHAR(4) NOT NULL,
     date_vente DATE NOT NULL,
     total DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-    statut VARCHAR(20) DEFAULT 'valide',
+    statut VARCHAR(20) DEFAULT 'en_attente',
     date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_user) REFERENCES Caisse(id_user) ON DELETE RESTRICT,
     INDEX idx_user (id_user),

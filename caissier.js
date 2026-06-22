@@ -142,46 +142,44 @@ payBtn.addEventListener("click", () => {
             alert("Montant reçu insuffisant.");
             return;
         }
-
-        const rendu = received - total;
-
-        alert(
-            `Paiement en espèces validé
-
-Total : ${total.toFixed(2)} €
-Reçu : ${received.toFixed(2)} €
-Rendu : ${rendu.toFixed(2)} €`
-        );
-
-    } else {
-
-        alert(
-            `Paiement par carte validé
-
-Montant débité : ${total.toFixed(2)} €`
-        );
     }
 
-    cart = [];
-    receivedEl.value = "";
-    paymentMethod.dispatchEvent(new Event("change"));
-    renderCart();
-});
+    console.log("Bouton payer cliqué");
+    console.log(cart);
 
-paymentMethod.addEventListener("change", () => {
+    fetch("caissier.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+            action: "payer",
+            panier: JSON.stringify(cart)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
 
-    if (paymentMethod.value === "carte") {
+        if (data.success) {
 
-        cashBlock.style.display = "none";
-        changeBlock.style.display = "none";
+            alert("Paiement enregistré avec succès");
 
-    } else {
+            cart = [];
+            receivedEl.value = "";
+            paymentMethod.dispatchEvent(new Event("change"));
+            renderCart();
 
-        cashBlock.style.display = "block";
-        changeBlock.style.display = "block";
+        } else {
 
-        updateChange();
-    }
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+
+        console.error(error);
+        alert("Erreur lors du paiement");
+
+    });
 
 });
 
