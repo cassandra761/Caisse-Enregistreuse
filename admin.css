@@ -381,7 +381,8 @@ select:focus {
     font-weight: 600;
 }
 
-.stat-card .stat-value {
+.stat-card .stat-value,
+.stat-card .stat-number {
     margin-top: 15px;
     font-size: 32px;
     font-weight: bold;
@@ -413,11 +414,21 @@ select:focus {
         grid-template-columns: 1fr;
     }
 
-    .stat-card .stat-value {
+    .stat-card .stat-value,
+    .stat-card .stat-number {
         font-size: 26px;
     }
 
     .stats-section {
         padding: 15px;
     }
+}
+/* Flash animation quand un chiffre est mis à jour en live */
+@keyframes flash-update {
+    0%   { background: rgba(250,66,0,0.15); border-radius: 6px; }
+    100% { background: transparent; }
+}
+.stat-number.flash,
+.stat-value.flash {
+    animation: flash-update 0.8s ease;
 }

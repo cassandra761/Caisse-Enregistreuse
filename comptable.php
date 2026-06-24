@@ -19,6 +19,22 @@ try {
     die('Erreur de connexion : ' . $e->getMessage());
 }
 
+// AJAX GET : polling nouvelles ventes en attente
+if (isset($_GET['action']) && $_GET['action'] === 'poll_ventes') {
+    header('Content-Type: application/json');
+    $depuis = (int)($_GET['depuis'] ?? 0); // dernier id_vente connu
+    $rows = $bdd->prepare("
+        SELECT v.id_vente, v.date_vente, v.total, v.statut, c.nom, c.prenom
+        FROM vente v
+        JOIN Caisse c ON c.id_user = v.id_user
+        WHERE v.id_vente > ?
+        ORDER BY v.id_vente ASC
+    ");
+    $rows->execute([$depuis]);
+    echo json_encode($rows->fetchAll(PDO::FETCH_ASSOC));
+    exit();
+}
+
 // AJAX : changer le statut d'une vente
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
@@ -77,6 +93,8 @@ $stats = $bdd->query("
         COALESCE(SUM(CASE WHEN statut = 'valide' THEN total ELSE 0 END),0) AS ca_valide
     FROM vente
 ")->fetch(PDO::FETCH_ASSOC);
+
+$maxIdVente = (int)($bdd->query("SELECT COALESCE(MAX(id_vente),0) FROM vente")->fetchColumn());
 
 ?>
 <!DOCTYPE html>
@@ -187,5 +205,67 @@ $stats = $bdd->query("
 <div id="toast" class="toast"></div>
 
 <script src="comptable.js"></script>
+<script>
+// ── Polling : nouvelles ventes toutes les 5 s ──
+let dernierIdVente = <?php echo $maxIdVente; ?>;
+let filtre = '<?php echo $filtre; ?>';
+
+function pollNouvellesVentes() {
+    fetch(`comptable.php?action=poll_ventes&depuis=${dernierIdVente}`)
+        .then(r => r.json())
+        .then(nouvelles => {
+            if (!nouvelles.length) return;
+
+            // Mettre à jour le dernier id connu
+            dernierIdVente = Math.max(...nouvelles.map(v => parseInt(v.id_vente)));
+
+            // Afficher une notification discrète
+            const nb = nouvelles.filter(v => v.statut === 'en_attente').length;
+            if (nb > 0) showToast(`${nb} nouvelle${nb > 1 ? 's' : ''} vente${nb > 1 ? 's' : ''} en attente`, 'success');
+
+            // Ajouter les nouvelles lignes si le filtre le permet
+            const tbody = document.querySelector('table tbody');
+            if (!tbody) return; // table vide → recharger
+
+            nouvelles.forEach(v => {
+                // Ne pas dupliquer une ligne déjà présente
+                if (document.querySelector(`tr[data-id="${v.id_vente}"]`)) return;
+                // Respecter le filtre actif
+                if (filtre !== 'tous' && v.statut !== filtre) return;
+
+                const labelsStatut = { en_attente: 'En attente', valide: 'Validée', refuse: 'Refusée' };
+                const actions = v.statut === 'en_attente'
+                    ? `<button class="btn btn-valider" onclick="updateStatut(${v.id_vente},'valide',this)">✓ Valider</button>
+                       <button class="btn btn-refuser" onclick="updateStatut(${v.id_vente},'refuse',this)">✕ Refuser</button>`
+                    : `<button class="btn btn-reset"   onclick="updateStatut(${v.id_vente},'en_attente',this)">↩ Remettre</button>`;
+
+                const date = new Date(v.date_vente).toLocaleDateString('fr-FR');
+                const total = parseFloat(v.total).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
+
+                const tr = document.createElement('tr');
+                tr.dataset.id = v.id_vente;
+                tr.innerHTML = `
+                    <td>#${v.id_vente}</td>
+                    <td>${date}</td>
+                    <td>${v.prenom} ${v.nom}</td>
+                    <td class="montant">${total}</td>
+                    <td><span class="badge badge-${v.statut}">${labelsStatut[v.statut] ?? v.statut}</span></td>
+                    <td class="actions-cell">${actions}</td>
+                `;
+                tr.style.animation = 'highlight 1s ease';
+                tbody.insertBefore(tr, tbody.firstChild);
+            });
+        })
+        .catch(() => {});
+}
+
+setInterval(pollNouvellesVentes, 5000);
+</script>
+<style>
+@keyframes highlight {
+    from { background: #fff3e0; }
+    to   { background: transparent; }
+}
+</style>
 </body>
 </html>

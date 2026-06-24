@@ -63,10 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Si authentifié, créer la session
     if ($authenticated) {
         $_SESSION['user'] = [
-            'login' => $userData['login'],
-            'role' => $userRole,
-            'nom' => $userData['nom'],
-            'prenom' => $userData['prenom']
+            'id_user' => $userData['id_user'],
+            'login'   => $userData['login'],
+            'role'    => $userRole,
+            'nom'     => $userData['nom'],
+            'prenom'  => $userData['prenom'],
         ];
 
         if ($userRole === 'caisse') {

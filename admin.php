@@ -100,6 +100,28 @@ if (isset($_GET['show_structure'])) {
         die('Erreur lors de la récupération des données : ' . $e->getMessage());
     }
 }
+
+// AJAX : données live pour le dashboard
+if (isset($_GET['action']) && $_GET['action'] === 'live_stats') {
+    header('Content-Type: application/json');
+    $data = [
+        'stock'   => [],
+        'totaux'  => [
+            'caissiers'     => (int)$bdd->query('SELECT COUNT(*) FROM Caisse')->fetchColumn(),
+            'comptables'    => (int)$bdd->query('SELECT COUNT(*) FROM Comptable')->fetchColumn(),
+            'produits'      => (int)$bdd->query('SELECT COUNT(*) FROM Produit')->fetchColumn(),
+            'stock_total'   => (int)($bdd->query('SELECT SUM(stock) FROM Produit')->fetchColumn() ?? 0),
+            'ventes'        => (int)$bdd->query('SELECT COUNT(*) FROM Vente')->fetchColumn(),
+            'ventes_semaine'=> (int)$bdd->query('SELECT COUNT(*) FROM Vente WHERE date_vente >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)')->fetchColumn(),
+        ],
+    ];
+    $rows = $bdd->query("SELECT nom, stock FROM Produit ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as $r) {
+        $data['stock'][] = ['nom' => $r['nom'], 'stock' => (int)$r['stock']];
+    }
+    echo json_encode($data);
+    exit();
+}
 ?>
  
 <!DOCTYPE html>
@@ -247,27 +269,27 @@ if (isset($_GET['show_structure'])) {
             <div class="stats-grid">
                 <div class="stat-card stat-orange">
                     <h3>👥 Caissiers</h3>
-                    <div class="stat-number"><?php echo $totalCaissiers; ?></div>
+                    <div class="stat-number" id="kpi-caissiers"><?php echo $totalCaissiers; ?></div>
                 </div>
                 <div class="stat-card stat-gray">
                     <h3>📊 Comptables</h3>
-                    <div class="stat-number"><?php echo $totalComptables; ?></div>
+                    <div class="stat-number" id="kpi-comptables"><?php echo $totalComptables; ?></div>
                 </div>
                 <div class="stat-card stat-blue">
                     <h3>🛒 Produits</h3>
-                    <div class="stat-number"><?php echo $totalProduits; ?></div>
+                    <div class="stat-number" id="kpi-produits"><?php echo $totalProduits; ?></div>
                 </div>
                 <div class="stat-card stat-green">
                     <h3>📦 Stock Total</h3>
-                    <div class="stat-number"><?php echo $totalStock; ?></div>
+                    <div class="stat-number" id="kpi-stock"><?php echo $totalStock; ?></div>
                 </div>
                 <div class="stat-card stat-yellow">
                     <h3>💳 Ventes Totales</h3>
-                    <div class="stat-number"><?php echo $totalVentes; ?></div>
+                    <div class="stat-number" id="kpi-ventes"><?php echo $totalVentes; ?></div>
                 </div>
                 <div class="stat-card stat-red">
                     <h3>📅 Ventes Semaine</h3>
-                    <div class="stat-number"><?php echo $totalVentesSemaine; ?></div>
+                    <div class="stat-number" id="kpi-ventes-semaine"><?php echo $totalVentesSemaine; ?></div>
                 </div>
             </div>
  
@@ -284,7 +306,7 @@ if (isset($_GET['show_structure'])) {
                             <th>Stock Disponible</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="stock-tbody">
                         <?php foreach ($produits as $produit): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($produit['nom']); ?></td>
@@ -299,5 +321,42 @@ if (isset($_GET['show_structure'])) {
     </div><!-- CORRECTION 4 : fermeture du div.container manquante ajoutée -->
  
     <script src="admin.js"></script>
+    <script>
+    // ── Rafraîchissement automatique du stock et des stats toutes les 5 s ──
+    function refreshStats() {
+        fetch('admin.php?action=live_stats')
+            .then(r => r.json())
+            .then(d => {
+                // Cartes KPI
+                const map = {
+                    'kpi-caissiers':      d.totaux.caissiers,
+                    'kpi-comptables':     d.totaux.comptables,
+                    'kpi-produits':       d.totaux.produits,
+                    'kpi-stock':          d.totaux.stock_total,
+                    'kpi-ventes':         d.totaux.ventes,
+                    'kpi-ventes-semaine': d.totaux.ventes_semaine,
+                };
+                for (const [id, val] of Object.entries(map)) {
+                    const el = document.getElementById(id);
+                    if (el && el.textContent != val) {
+                        el.textContent = val;
+                        el.classList.add('flash');
+                        setTimeout(() => el.classList.remove('flash'), 800);
+                    }
+                }
+
+                // Tableau stock détaillé
+                const tbody = document.getElementById('stock-tbody');
+                if (tbody) {
+                    tbody.innerHTML = d.stock.map(p =>
+                        `<tr><td>${p.nom}</td><td>${p.stock}</td></tr>`
+                    ).join('');
+                }
+            })
+            .catch(() => {}); // silencieux si la page n'est pas active
+    }
+    // Lancer uniquement sur l'onglet stats
+    setInterval(refreshStats, 5000);
+    </script>
 </body>
 </html>
