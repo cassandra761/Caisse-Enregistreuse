@@ -385,7 +385,7 @@ if (isset($_GET['view_table'])) {
                                     }
                                     elseif (isset($_GET['action']) && $_GET['action'] === 'edit_user') {
                                        $type = $_GET['type'];
-                                        $id = $_GET['id_user'];
+                                        $id = $_GET['id'];
                                     }
                                 ?>
                             </tr>
@@ -410,7 +410,6 @@ if (isset($_GET['view_table'])) {
                         <th>Table</th>
                         <th>Type</th>
                         <th>Collation</th>
-                        <th>Nombre de lignes</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -424,7 +423,6 @@ if (isset($_GET['view_table'])) {
                             <td><?php echo htmlspecialchars($status['Name']); ?></td>
                             <td><?php echo htmlspecialchars($status['Engine']); ?></td>
                             <td><?php echo htmlspecialchars($status['Collation']); ?></td>
-                            <td><?php echo htmlspecialchars($status['Rows']); ?></td>
                             <td>
                                 <a href="admin.php?view_table=<?php echo urlencode($status['Name']); ?>" class="btn-view">Voir Contenu</a>
                                 <a href="admin.php?show_structure=<?php echo urlencode($status['Name']); ?>" class="btn-view">Voir Structure</a>
