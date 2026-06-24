@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($userRole === 'caisse') {
             header('Location: caissier.php');
         } elseif ($userRole === 'comptable') {
-            header('Location: accountant.php');
+            header('Location: comptable.php');
         } elseif ($userRole === 'administrateur') {
             header('Location: admin.php');
         }
